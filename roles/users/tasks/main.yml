@@ -1,0 +1,6 @@
+---
+- name: create user
+  user:
+    name: "{{ item.key }}"
+    groups: "{{ item.value.groups | join(\",\") }}"
+  with_dict: "{{ users }}"

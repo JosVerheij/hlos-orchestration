@@ -1,0 +1,2 @@
+- name: Main tasks
+  import_tasks: infrastructure.yml

@@ -1,0 +1,10 @@
+# file: site.yml
+
+- name: 
+- hosts: bootstrap
+  roles:
+    - infrastructure
+
+- hosts: orchestrator
+  roles:
+    

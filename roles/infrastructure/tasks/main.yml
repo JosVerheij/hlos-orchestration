@@ -1,0 +1,74 @@
+- name: Authenticate to the cloud and retrieve the service catalog
+  os_auth:
+
+- name: Create SSH Access security group
+  os_security_group:
+    state: present
+    name: allow-ssh
+    description: Security group for SSH Access over internet
+
+- name: Set rules for SSH Access security group
+  os_security_group_rule:
+    security_group: allow-ssh
+    protocol: tcp
+    port_range_min: 4223
+    port_range_max: 4223
+    remote_ip_prefix: 0.0.0.0/0
+
+- name: Setup networks
+  os_network:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - red_network
+    - yellow_network
+    - green_network
+
+- name: Setup subnet
+  os_subnet:
+    state: present
+    network_name: "{{ item.network }}"
+    name: "{{ item.subnet }}"
+    cidr: "{{ item.cidr }}"
+  loop:
+    - { network: 'red_network', subnet: '10_88_0', cidr: '10.88.0.0/24' }
+    - { network: 'yellow_network', subnet: '10_44_0', cidr: '10.44.0.0/24' }
+    - { network: 'green_network', subnet: '10_22_0', cidr: '10.22.0.0/24' }
+
+- name: Setup router
+  os_router:
+    state: present
+    name: VR_ONE
+    network: 'floating'
+    interfaces:
+      - '10_88_0'
+      - '10_44_0'
+      - '10_22_0'
+
+- name: Create test instance
+  os_server:
+    state: present
+    name: test-ansible
+    image: 0370c27a-6dc1-4b44-8f35-c4296baa4c25
+    flavor: 1001
+    network: 03708997-16bd-43d8-9b51-24e3b3d6a759
+    userdata: |
+      #cloud-config
+      users:
+        - name: ansible
+          ssh-authorized-keys: 
+            - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDhwa20MQJj9MbJqYyoKWEvePYcJuRZV7/Qi+OZ2cBaMsgeVFgBhGPh9GJas0CTLwmXeZwlEBTZzW5i09J6tuRi/fc4+qs95zfdaKvEuB8dMU5M0w+nXCC6ww6uT/1d0NlDuK1uVUX1czePqAIycnrabdnaB6eMN7UCPuXhXFNnKRONZ/j551y5tVdFged4PwJi7ysZbE31DdZ92LzL37KNKB4cfWD4e2AghIn47BBuK0EEXoJ2lkURNpYoyCiQrY6DWDOY3EfNacpHgJaafANYhiA1cilbCwfRS2e8pbgxhX5ojvZ1Tk9UbDviFVhNIgxXmcQp2CsLNg68ofekI3ODbzSGwPCZQ/qvw94sKbE+vx1SoJYUoIeulXoI0lnbJoYXjRPEKE43B2+QGfNKIO6jTUCEckguwZca0S2uREyLJIKMoo5KnSPzUG8StIvaC/vRQAgKbuWoGWxbwFxL/2IYkBknptfKXNB0zaagM0TGFRsRveN8wxmofgB1lKkpcVJAfXaCf6zc7dJrdVTQjpmQ3N1icaM67gBq8uMMxjsWq2rFMkMDuSMJnxhvIpU8va/NaK0Og7qChbEuvWK8KjxGq5pgQts0iBRVPd6tzF0+54S0fqSflzKgz5DVLeZMU945saILLvCb7MH8JcdjalqbShUwJplboq2HDrtQbhBukw== jos@MBP.local
+          sudo: ['ALL=(ALL) NOPASSWD:ALL']
+          groups: sudo
+          shell: /bin/bash
+      runcmd:
+        - sed -i -e '/^Port/s/^.*$/Port 4223/' /etc/ssh/sshd_config
+        - sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+        - sed -i -e '$aAllowUsers ansible' /etc/ssh/sshd_config
+        - restart ssh
+    security_groups:
+      - default
+      - allow-ssh
+    auto_ip: yes
+    meta:
+      group: orchestrator

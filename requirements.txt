@@ -1,0 +1,4 @@
+ansible
+python-openstackclient
+shade
+os-client-config==1.28
